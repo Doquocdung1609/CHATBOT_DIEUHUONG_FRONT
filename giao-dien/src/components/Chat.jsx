@@ -43,7 +43,11 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
       console.log(`WebSocket already open for session_id: ${currentSession}`);
       return;
     }
-    ws.current = new WebSocket(`ws://localhost:8000/ws/${currentSession}/${token}`);
+    // Use wss:// for production, fallback to ws:// for local development
+const wsUrl = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL.replace(/https?:\/\//, 'wss://').replace(/\/+$/, '')}/ws/${currentSession}/${token}`
+  : `ws://localhost:8000/ws/${currentSession}/${token}`;    
+  ws.current = new WebSocket(wsUrl);
     ws.current.onopen = () => {
       console.log(`WebSocket connected for session_id: ${currentSession}`);
       reconnectAttempts.current = 0;
@@ -152,119 +156,128 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
     renderer: new marked.Renderer(),
   });
 
-  const handleSend = async () => {
-    if (!input || !currentSession || !token || !ws.current || ws.current.readyState !== WebSocket.OPEN) {
-      if (!currentSession) {
-        alert('Vui lòng chọn hoặc tạo một phiên chat mới.');
-      }
-      return;
+const handleSend = async () => {
+  if (!input || !currentSession || !token) {
+    if (!currentSession) {
+      alert('Vui lòng chọn hoặc tạo một phiên chat mới.');
+    } else {
+      alert('Không thể kết nối với server. Vui lòng thử lại.');
     }
-    const timestamp = new Date().toISOString();
-    const message = {
-      session_id: currentSession,
-      role: mode === 'Học sinh' ? 'user' : 'teacher',
-      content: input,
-      timestamp,
-    };
-    const aiMessage = { role: message.role, content: input, timestamp };
+    return;
+  }
+  const timestamp = new Date().toISOString();
+  const message = {
+    session_id: currentSession,
+    role: mode === 'Học sinh' ? 'user' : 'teacher',
+    content: input,
+    timestamp,
+  };
+  const aiMessage = { role: message.role, content: input, timestamp };
 
-    try {
-      await addMessage(message, token);
-      ws.current.send(JSON.stringify(message));
-      if (mode === "Học sinh") {
-        setMessages((prev) => [...prev, { ...message, rendered: marked.parse(message.content) }]);
-      }
+  try {
+    setIsAiResponding(true);
+    // Only send to /conversations, backend handles WebSocket broadcasting
+    await addMessage(message, token);
+    if (mode === 'Học sinh') {
+      setMessages((prev) => {
+        if (prev.some(msg => msg.timestamp === message.timestamp && msg.content === message.content)) {
+          return prev;
+        }
+        return [...prev, { ...message, rendered: marked.parse(message.content) }];
+      });
+    }
 
-      if (mode === 'Học sinh' && aiEnabled) {
-        setIsAiResponding(true);
-        const aiRequest = {
-          messages: [...messages, aiMessage],
-          session_id: currentSession,
-          ai_enabled: true,
-        };
-        const response = await sendToAI(aiRequest, token);
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let aiResponse = '';
-        const aiTimestamp = new Date().toISOString();
+    if (mode === 'Học sinh' && aiEnabled) {
+      const aiRequest = {
+        messages: [...messages, aiMessage].map(msg => ({
+          role: msg.role || 'user',
+          content: msg.content || '',
+          timestamp: msg.timestamp || new Date().toISOString(),
+        })),
+        session_id: currentSession,
+        ai_enabled: true,
+      };
+      console.log('Sending aiRequest to /chatbot:', JSON.stringify(aiRequest, null, 2)); // Log request body
+      const response = await sendToAI(aiRequest, token);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let aiResponse = '';
+      const aiTimestamp = new Date().toISOString();
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          console.log('SSE chunk:', chunk);
-          const lines = chunk.split('\n\n');
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        console.log('SSE chunk:', chunk);
+        const lines = chunk.split('\n\n');
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              const data = line.slice(6).trim();
-              if (!data || data === '[DONE]' || data.startsWith('SOURCE_LANG')) continue;
-              aiResponse += data;
-            }
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            if (!data || data === '[DONE]' || data.startsWith('SOURCE_LANG')) continue;
+            aiResponse += data;
           }
         }
-
-        aiResponse = aiResponse.trim();
-        console.log('Final AI response:', aiResponse);
-        setMessages((prev) => [
-          ...prev,
-          {
-            session_id: currentSession,
-            role: 'assistant',
-            content: aiResponse,
-            rendered: marked.parse(aiResponse),
-            timestamp: aiTimestamp,
-          },
-        ]);
-        setIsAiResponding(false);
-        setTimeout(async () => {
-          try {
-            const res = await getConversations(currentSession, token);
-            const uniqueMessages = res.data.filter(
-              (msg, index, self) =>
-                index === self.findIndex((m) => m.timestamp === msg.timestamp && m.content === msg.content)
-            );
-            setMessages(uniqueMessages.map((msg) => ({
-              ...msg,
-              content: msg.content.replace('<br>', '\n'),
-              rendered: marked.parse(msg.content)
-            })));
-            console.log("Đã reload hội thoại hoàn chỉnh từ DB");
-          } catch (err) {
-            console.error("Lỗi reload hội thoại:", err);
-          }
-        }, 300);
       }
-      setInput('');
-    } catch (err) {
-      console.error('Send message error:', err);
-      setIsAiResponding(false);
-      if (err.response?.status === 401) navigate('/login');
-      else
-        setMessages((prev) => [
-          ...prev,
-          {
-            session_id: currentSession,
-            role: 'assistant',
-            content: `Lỗi: ${err.message}. 😔`,
-            timestamp: new Date().toISOString(),
-            rendered: marked.parse(`Lỗi: ${err.message}. 😔`),
-          },
-        ]);
+
+      aiResponse = aiResponse.trim();
+      console.log('Final AI response:', aiResponse);
+      setMessages((prev) => [
+        ...prev,
+        {
+          session_id: currentSession,
+          role: 'assistant',
+          content: aiResponse,
+          rendered: marked.parse(aiResponse),
+          timestamp: aiTimestamp,
+        },
+      ]);
+      setTimeout(async () => {
+        try {
+          const res = await getConversations(currentSession, token);
+          const uniqueMessages = res.data.filter(
+            (msg, index, self) =>
+              index === self.findIndex((m) => m.timestamp === msg.timestamp && m.content === msg.content)
+          );
+          setMessages(uniqueMessages.map((msg) => ({
+            ...msg,
+            content: msg.content.replace('<br>', '\n'),
+            rendered: marked.parse(msg.content)
+          })));
+          console.log('Đã reload hội thoại hoàn chỉnh từ DB');
+        } catch (err) {
+          console.error('Lỗi reload hội thoại:', err);
+        }
+      }, 300);
     }
-  };
+    setInput('');
+  } catch (err) {
+    console.error('Send message error:', err.message, err.response?.status, err.response?.data);
+    setMessages((prev) => [
+      ...prev,
+      {
+        session_id: currentSession,
+        role: 'assistant',
+        content: `Lỗi: Không thể nhận phản hồi từ AI. Vui lòng thử lại sau. 😔`,
+        timestamp: new Date().toISOString(),
+        rendered: marked.parse(`Lỗi: Không thể nhận phản hồi từ AI. Vui lòng thử lại sau. 😔`),
+      },
+    ]);
+  } finally {
+    setIsAiResponding(false);
+  }
+};
 
   return (
     <div className="main">
       <div className={`chat-container ${sidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="chat-header">
           {userInfo && (
-            <span  className="greeting">
+            <span className="greeting">
               {mode === 'Học sinh'
                 ? `Chào em ${userInfo.name} lớp ${userInfo.class}`
                 : ``}
-
             </span>
           )}
           {mode === 'Giáo viên' && (

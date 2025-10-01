@@ -35,14 +35,16 @@ export const getConversations = (sessionId, token) => api.get(`/conversations/${
 export const addMessage = (message, token) => api.post('/conversations', { message, token });
 
 export const sendToAI = (data, token) => {
-  return fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/chatbot`, {
+  const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+  const url = new URL(`${baseUrl}/chatbot`);
+  url.searchParams.append('token', token); // Send token as query parameter
+  return fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
-      'Authorization': `Bearer ${token}`,
     },
-    body: JSON.stringify({ request: data, token }),
+    body: JSON.stringify(data), // Only include ChatRequest fields
   });
 };
 

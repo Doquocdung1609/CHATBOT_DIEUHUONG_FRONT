@@ -96,21 +96,25 @@ const TeacherDashboard = ({ userId, aiEnabled, setAiEnabled, token, handleLogout
     }
   };
 
-  const connectWebSocket = () => {
-    if (!token || !userId) {
-      console.log('Missing token or userId, skipping WebSocket connection');
-      return;
-    }
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      console.log(`WebSocket already open for teacherId: ${userId}`);
-      return;
-    }
-    ws.current = new WebSocket(`${wsUrl}/ws/teacher/${userId}/${token}`);
+const connectWebSocket = () => {
+  if (!token || !userId) {
+    console.log('Missing token or userId, skipping WebSocket connection');
+    return;
+  }
+  if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+    console.log(`WebSocket already open for teacherId: ${userId}`);
+    return;
+  }
+  const backendUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+  const wsUrl = backendUrl
+    .replace('https://', 'wss://')
+    .replace('http://', 'ws://');
+  ws.current = new WebSocket(`${wsUrl}/ws/teacher/${userId}/${token}`);
 
-    ws.current.onopen = () => {
-      console.log(`WebSocket connected for teacherId: ${userId}`);
-      reconnectAttempts.current = 0;
-    };
+  ws.current.onopen = () => {
+    console.log(`WebSocket connected for teacherId: ${userId}`);
+    reconnectAttempts.current = 0;
+  };
     ws.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
