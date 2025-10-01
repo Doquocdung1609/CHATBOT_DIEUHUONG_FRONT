@@ -1,0 +1,339 @@
+:root {
+  --sidebar-width: 17rem;
+  --sidebar-collapsed-width: 70px;
+  --header-height: 60px;
+  --input-height: 70px;
+}
+
+/* Toàn bộ vùng chính */
+.main {
+  display: flex;
+  height: 100vh;
+  background-color: #f3f4f6;
+  overflow: hidden;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: var(--sidebar-width);
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  z-index: 100;
+  overflow: hidden;
+}
+
+.sidebar-container.collapsed {
+  width: var(--sidebar-collapsed-width);
+}
+
+/* Header trong sidebar */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #f9fafb;
+}
+
+.sidebar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #111827;
+  font-size: 16px;
+}
+
+.toggle-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #6b7280;
+  transition: color 0.2s;
+}
+.toggle-btn:hover {
+  color: #111827;
+}
+
+/* Logout */
+.logout-btn {
+  margin: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: none;
+  background-color: #ef4444;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+.logout-btn:hover {
+  background-color: #dc2626;
+}
+
+/* Session Section */
+.session-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 16px;
+  overflow-y: auto;
+}
+
+.section-title {
+  margin-top: 10px;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.create-session-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+.create-session-btn:hover {
+  background-color: #1d4ed8;
+}
+
+/* Session List */
+.session-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.session-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f3f4f6;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.delete-session-btn {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.delete-session-btn:hover {
+  opacity: 1;
+}
+
+.session-item:hover {
+  background: #e5e7eb;
+  transform: scale(1.01);
+}
+.session-item.active {
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 600;
+  border-left: 3px solid #2563eb;
+}
+
+.empty-text {
+  color: #9ca3af;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* ===== KHU VỰC CHAT ===== */
+.chat-container {
+  position: relative;
+  top: 0;
+  left: var(--sidebar-width);
+  width: calc(100vw - var(--sidebar-width));
+  height: 100vh;
+  background-color: #f9fafb;
+  display: flex;
+  flex-direction: column;
+  transition: left 0.3s ease, width 0.3s ease;
+}
+
+/* Khi sidebar thu gọn */
+.main.collapsed .chat-container {
+  left: var(--sidebar-collapsed-width);
+  width: calc(100vw - var(--sidebar-collapsed-width));
+}
+
+/* Header cố định */
+.chat-header {
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-width);
+  width: calc(97vw - var(--sidebar-width));
+  height: var(--header-height);
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  font-weight: 600;
+  font-size: 20px;
+  z-index: 90;
+  transition: left 0.3s ease, width 0.3s ease;
+}
+
+.main.collapsed .chat-header {
+  left: var(--sidebar-collapsed-width);
+  width: calc(100vw - var(--sidebar-collapsed-width));
+}
+
+/* Khung tin nhắn */
+.chat-window {
+  flex: 1;
+  overflow-y: auto;
+  padding: calc(var(--header-height) + 1rem) 1rem calc(var(--input-height) + 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  scroll-behavior: smooth;
+}
+
+/* Input cố định */
+.input-container {
+  position: fixed;
+  bottom: 0;
+  left: var(--sidebar-width);
+  width: calc(97vw - var(--sidebar-width));
+  height: var(--input-height);
+  background-color: #fff;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px;
+  z-index: 90;
+  transition: left 0.3s ease, width 0.3s ease;
+}
+
+/* Khi sidebar thu gọn */
+.main.collapsed .input-container {
+  left: var(--sidebar-collapsed-width);
+  width: calc(100vw - var(--sidebar-collapsed-width));
+}
+
+/* Tin nhắn */
+.chat-message {
+  padding: 12px 16px;
+  border-radius: 10px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  max-width: 75%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.chat-message.user {
+  align-self: flex-end;
+  background-color: #dcfce7;
+}
+
+.chat-message.assistant {
+  align-self: flex-start;
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+}
+
+.chat-message.assistant pre {
+  background: #f9f9f9;
+  border-radius: 6px;
+  padding: 10px;
+  overflow-x: auto;
+}
+.chat-message.assistant code {
+  background: #f3f3f3;
+  border-radius: 4px;
+  padding: 2px 4px;
+  font-family: monospace;
+}
+
+
+.message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+/* Input & Buttons */
+.input-container input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  outline: none;
+  font-size: 15px;
+}
+.input-container input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+.input-container button {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+}
+button.send {
+  background-color: #2563eb;
+  color: white;
+}
+button.send:hover {
+  background-color: #1e40af;
+}
+button.refresh {
+  background-color: #9ca3af;
+  color: white;
+}
+button.refresh:hover {
+  background-color: #6b7280;
+}
+
+.back-btn {
+  margin-left: auto;
+  padding: 6px 14px;
+  background: #e0e7ff;
+  border: none;
+  border-radius: 8px;
+  color: #1e40af;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #c7d2fe;
+}

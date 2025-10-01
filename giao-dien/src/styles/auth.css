@@ -1,0 +1,127 @@
+/* auth.css - style riêng cho Login & Register */
+
+.auth-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: linear-gradient(135deg, #74ebd5, #9face6);
+  padding: 20px;
+}
+
+.auth-card {
+  background: #fff;
+  padding: 40px 30px;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 400px;
+  animation: fadeIn 0.6s ease;
+}
+
+.auth-title {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.auth-input {
+  margin: 10px 0;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 15px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.auth-input:focus {
+  border-color: #6a82fb;
+  box-shadow: 0 0 5px rgba(106, 130, 251, 0.4);
+}
+
+.auth-button {
+  margin-top: 15px;
+  padding: 12px;
+  background: linear-gradient(135deg, #6a82fb, #fc5c7d);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+}
+
+.auth-text {
+  text-align: center;
+  margin-top: 15px;
+  color: #555;
+}
+
+.auth-link {
+  color: #6a82fb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+.auth-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.auth-brand {
+  font-size: 26px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #6a82fb, #fc5c7d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: 1px;
+}
+
+.auth-alert {
+  margin-bottom: 15px;
+  padding: 12px 15px;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 15px;
+  animation: fadeIn 0.4s ease;
+  font-weight: 500;
+}
+
+.auth-alert.error {
+  background: rgba(255, 77, 77, 0.1);
+  color: #d93025;
+  border: 1px solid rgba(255, 77, 77, 0.3);
+}
+
+.auth-alert.success {
+  background: rgba(52, 199, 89, 0.1);
+  color: #2e7d32;
+  border: 1px solid rgba(52, 199, 89, 0.3);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
