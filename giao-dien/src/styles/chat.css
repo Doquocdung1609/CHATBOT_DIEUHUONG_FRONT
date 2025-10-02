@@ -337,12 +337,28 @@ button.refresh:hover {
 
 /* ====== RESPONSIVE (MOBILE) ====== */
 @media (max-width: 768px) {
+  .sidebar-container {
+    display: none; /* Ẩn hoàn toàn sidebar khi ở mobile */
+  }
+
+  .sidebar-container:not(.collapsed) {
+    display: flex; /* Hiển thị sidebar khi không collapsed */
+  }
+
+  /* Hide MessageSquare icon when sidebar is collapsed */
+  .sidebar-container.collapsed .sidebar-title svg {
+    display: none;
+  }
+  .chat-container {
+    left: 0 !important;
+    width: 100vw !important;
+  }
+
   /* Chat full width, trừ sidebar */
-  .chat-container,
   .chat-header,
   .input-container {
-    left: var(--sidebar-collapsed-width) !important;
-    width: calc(100vw - var(--sidebar-collapsed-width)) !important;
+    left: 0 !important;
+    width: 100vw !important;
   }
 
   /* Chat window chiếm đủ chiều ngang */
@@ -380,5 +396,18 @@ button.refresh:hover {
   .chat-message.assistant {
     background-color: #f8fafc !important;
     border: 1px solid #e2e8f0;
+  }
+
+  .mobile-toggle-btn {
+    display: flex;
+    background: none;
+    border: none;
+    color: #4b5563;
+    cursor: pointer;
+    margin-right: 12px;
+  }
+
+  .mobile-toggle-btn:hover {
+    color: #111827;
   }
 }

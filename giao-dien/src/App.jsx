@@ -57,7 +57,7 @@ function AppContent({
   handleLogin,
   handleLogout,
 }) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(window.innerWidth <= 768); // Ẩn sidebar trên mobile
   const location = useLocation();
 
   useEffect(() => {
@@ -68,7 +68,7 @@ function AppContent({
 
   return (
     <div className={`app-container flex main ${sidebarCollapsed ? 'collapsed' : ''}`}>
-      {userId && token && (
+      {userId && token && !isAuthPage && (
         <Sidebar
           studentId={userId}
           token={token}
@@ -77,6 +77,7 @@ function AppContent({
           handleLogout={handleLogout}
           isTeacher={mode === 'Giáo viên'}
           setCollapsedGlobal={setSidebarCollapsed}
+          sidebarCollapsed={sidebarCollapsed}
         />
       )}
 
@@ -84,7 +85,6 @@ function AppContent({
         <Routes>
           <Route path="/login" element={<Login onLogin={handleLogin} mode={mode} />} />
           <Route path="/register" element={<Register />} />
-
           <Route
             path="/chat"
             element={
@@ -96,14 +96,14 @@ function AppContent({
                   aiEnabled={aiEnabled}
                   currentSession={currentSession}
                   setCurrentSession={setCurrentSession}
-                  sidebarCollapsed={sidebarCollapsed} // Truyền sidebarCollapsed
+                  sidebarCollapsed={sidebarCollapsed}
+                  setCollapsedGlobal={setSidebarCollapsed}
                 />
               ) : (
                 <Navigate to="/login" />
               )
             }
           />
-
           <Route
             path="/teacher"
             element={
@@ -116,18 +116,17 @@ function AppContent({
                   currentSession={currentSession}
                   setCurrentSession={setCurrentSession}
                   handleLogout={handleLogout}
-                  sidebarCollapsed={sidebarCollapsed} // Truyền sidebarCollapsed
+                  sidebarCollapsed={sidebarCollapsed}
                 />
               ) : (
                 <Navigate to="/login" />
               )
             }
           />
-
           <Route
             path="/teacher/chat/:studentId"
             element={
-              userId && token && mode === "Giáo viên" ? (
+              userId && token && mode === 'Giáo viên' ? (
                 <TeacherChatWrapper
                   userId={userId}
                   token={token}
@@ -141,7 +140,6 @@ function AppContent({
               )
             }
           />
-
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </main>

@@ -13,6 +13,7 @@ const Sidebar = ({
   handleLogout,
   isTeacher = false,
   setCollapsedGlobal,
+  sidebarCollapsed
 }) => {
   const [sessions, setSessions] = useState([]);
   const [collapsed, setCollapsed] = useState(false);
@@ -22,6 +23,10 @@ const Sidebar = ({
   const hasCreatedInitialSession = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setCollapsed(sidebarCollapsed);
+  }, [sidebarCollapsed]);
 
   const isTeacherChatPage = location.pathname.startsWith('/teacher/chat');
 
