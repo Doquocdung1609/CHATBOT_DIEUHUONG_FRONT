@@ -337,28 +337,40 @@ button.refresh:hover {
 
 /* ====== RESPONSIVE (MOBILE) ====== */
 @media (max-width: 768px) {
-  /* Chat area full width */
+  /* Chat full width, trừ sidebar */
   .chat-container,
   .chat-header,
   .input-container {
-    width: calc(90vw - var(--sidebar-collapsed-width)) !important;
+    left: var(--sidebar-collapsed-width) !important;
+    width: calc(100vw - var(--sidebar-collapsed-width)) !important;
   }
 
-  /* Fix text color & contrast */
-  .chat-message,
-  .chat-header,
-  .input-container {
-    background-color: #ffffff !important;
-    color: #111827 !important;
+  /* Chat window chiếm đủ chiều ngang */
+  .chat-window {
+    padding: calc(var(--header-height) + 1rem) 0.75rem calc(var(--input-height) + 1rem);
   }
 
-  /* Input bigger, not too close bottom */
+  /* Input container: nút và input co giãn đều */
   .input-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     height: 80px;
-    padding-bottom: env(safe-area-inset-bottom, 16px);
+    padding: 8px 10px;
+    box-sizing: border-box;
   }
+
   .input-container input {
-    font-size: 16px;
+    flex: 1;
+    min-width: 0; /* 🔥 Giúp input co lại hợp lý */
+    font-size: 15px;
+  }
+
+  .input-container button {
+    flex-shrink: 0;
+    padding: 8px 12px;
+    font-size: 14px;
   }
 
   /* Messages readable */
