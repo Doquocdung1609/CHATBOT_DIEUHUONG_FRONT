@@ -1,7 +1,6 @@
-// Login.jsx
 import { useState } from 'react';
 import { loginStudent, teacherLogin } from '../services/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom'; // Add Link import
 import '../styles/auth.css';
 
 function Login({ onLogin }) {
@@ -15,7 +14,6 @@ function Login({ onLogin }) {
     e.preventDefault();
     setError('');
 
-    // Kiểm tra validate
     if (!username || !password) {
       setError('Vui lòng điền đầy đủ thông tin.');
       return;
@@ -45,7 +43,6 @@ function Login({ onLogin }) {
 
         <h2 className="auth-title">Đăng nhập</h2>
 
-        {/* --- Thông báo lỗi --- */}
         {error && <div className="auth-alert">{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -69,7 +66,7 @@ function Login({ onLogin }) {
           <button type="submit" className="auth-button">Đăng nhập</button>
           {mode === 'Học sinh' && (
             <p className="auth-text">
-              Chưa có tài khoản? <a href="/register" className="auth-link">Đăng ký</a>
+              Chưa có tài khoản? <Link to="/register" className="auth-link">Đăng ký</Link>
             </p>
           )}
         </form>
