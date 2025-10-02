@@ -337,22 +337,11 @@ button.refresh:hover {
 
 /* ====== RESPONSIVE (MOBILE) ====== */
 @media (max-width: 768px) {
-  /* Sidebar auto collapse */
-  .sidebar-container {
-    width: var(--sidebar-collapsed-width) !important;
-  }
-  .sidebar-title span,
-  .sidebar-title svg,
-  .toggle-btn {
-    display: none !important;
-  }
-
   /* Chat area full width */
   .chat-container,
   .chat-header,
   .input-container {
-    left: var(--sidebar-collapsed-width) !important;
-    width: calc(100vw - var(--sidebar-collapsed-width)) !important;
+    width: calc(90vw - var(--sidebar-collapsed-width)) !important;
   }
 
   /* Fix text color & contrast */
