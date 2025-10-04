@@ -340,6 +340,19 @@ button.refresh:hover {
   background: #c7d2fe;
 }
 
+  .mobile-toggle-btn {
+    display: flex;
+    background: none;
+    border: none;
+    color: #4b5563;
+    cursor: pointer;
+    margin-right: 12px;
+  }
+
+  .mobile-toggle-btn:hover {
+    color: #111827;
+  }
+
 /* ====== RESPONSIVE (MOBILE) ====== */
 @media (max-width: 768px) {
   .sidebar-container {

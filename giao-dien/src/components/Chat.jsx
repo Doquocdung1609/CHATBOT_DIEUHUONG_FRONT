@@ -15,6 +15,14 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
   const maxReconnectAttempts = 5;
   const navigate = useNavigate();
   const sessionRef = useRef(currentSession);
+  const messagesEndRef = useRef(null);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isAiResponding]);
 
   useEffect(() => {
     const fetchUserInfo = async () => {
@@ -347,6 +355,7 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
                   👩‍🏫 Cô Hương (AI): <div className="message-content">Đang suy nghĩ...</div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </>
           )}
         </div>
