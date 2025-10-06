@@ -5,16 +5,16 @@ import {
   getLastMessage,
   getSessions,
   getConversations,
-  markRead
+  markRead,
+  getStudent
 } from '../services/api';
 import Chat from './Chat';
+import ConfirmModal from './ConfirmModal';
 import '../styles/teacher-dashboard.css';
 import { FiRefreshCcw, FiFilter, FiMessageCircle } from 'react-icons/fi';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-// Chuyển từ http:// sang ws://, và https:// sang wss://
 const wsUrl = backendUrl
   .replace('https://', 'wss://')
   .replace('http://', 'ws://');
@@ -38,6 +38,11 @@ const TeacherDashboard = ({ userId, aiEnabled, setAiEnabled, token, handleLogout
   const [view, setView] = useState('home');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [currentSession, setCurrentSession] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [studentsPerPage] = useState(5); // 5 students per page
+  const [showModal, setShowModal] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
+  const [modalStudentId, setModalStudentId] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
   const ws = useRef(null);
@@ -73,14 +78,6 @@ const TeacherDashboard = ({ userId, aiEnabled, setAiEnabled, token, handleLogout
             }
           }
 
-          console.log('Student data:', {
-            id: s.id,
-            hasSessions: sessions.length > 0,
-            hasMessages,
-            unreadStatus,
-            lastMessageTime,
-          });
-
           return {
             ...s,
             unread: unreadStatus,
@@ -89,33 +86,39 @@ const TeacherDashboard = ({ userId, aiEnabled, setAiEnabled, token, handleLogout
           };
         })
       );
-      setStudents(updated);
+      // Sort students by status priority
+      const sortedStudents = updated.sort((a, b) => {
+        const priority = { 'Chưa đọc': 1, 'Đã đọc': 2, 'Chưa nhắn': 3 };
+        return priority[a.unread] - priority[b.unread];
+      });
+      setStudents(sortedStudents);
+      setCurrentPage(1); // Reset to first page when students are fetched
     } catch (err) {
       console.error('Fetch students error:', err);
       if (err.response?.status === 401) window.location.href = '/login';
     }
   };
 
-const connectWebSocket = () => {
-  if (!token || !userId) {
-    console.log('Missing token or userId, skipping WebSocket connection');
-    return;
-  }
-  if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-    console.log(`WebSocket already open for teacherId: ${userId}`);
-    return;
-  }
-  const backendUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
-  const wsUrl = backendUrl
-    .replace('https://', 'wss://')
-    .replace('http://', 'ws://');
-  ws.current = new WebSocket(`${wsUrl}/ws/teacher/${userId}/${token}`);
+  const connectWebSocket = () => {
+    if (!token || !userId) {
+      console.log('Missing token or userId, skipping WebSocket connection');
+      return;
+    }
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      console.log(`WebSocket already open for teacherId: ${userId}`);
+      return;
+    }
+    const backendUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+    const wsUrl = backendUrl
+      .replace('https://', 'wss://')
+      .replace('http://', 'ws://');
+    ws.current = new WebSocket(`${wsUrl}/ws/teacher/${userId}/${token}`);
 
-  ws.current.onopen = () => {
-    console.log(`WebSocket connected for teacherId: ${userId}`);
-    reconnectAttempts.current = 0;
-  };
-    ws.current.onmessage = (event) => {
+    ws.current.onopen = () => {
+      console.log(`WebSocket connected for teacherId: ${userId}`);
+      reconnectAttempts.current = 0;
+    };
+    ws.current.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data);
         console.log('WebSocket received:', data);
@@ -123,8 +126,16 @@ const connectWebSocket = () => {
 
         if (data.type === 'new_message') {
           const { studentId, sessionId, lastMessageTime } = data;
-          setStudents((prev) =>
-            prev.map((s) =>
+          // Fetch student name for the modal
+          const studentRes = await getStudent(studentId, token);
+          const studentName = studentRes.data.name || 'Học sinh';
+          // Show modal notification
+          setModalMessage(`Có tin nhắn mới chưa đọc từ ${studentName}`);
+          setModalStudentId(studentId);
+          setShowModal(true);
+          // Update student state
+          setStudents((prev) => {
+            const updatedStudents = prev.map((s) =>
               s.id === studentId
                 ? {
                     ...s,
@@ -133,8 +144,13 @@ const connectWebSocket = () => {
                     hasMessages: true,
                   }
                 : s
-            )
-          );
+            );
+            // Re-sort students after updating status
+            return updatedStudents.sort((a, b) => {
+              const priority = { 'Chưa đọc': 1, 'Đã đọc': 2, 'Chưa nhắn': 3 };
+              return priority[a.unread] - priority[b.unread];
+            });
+          });
         }
       } catch (err) {
         console.error('WebSocket message parsing error:', err);
@@ -173,6 +189,7 @@ const connectWebSocket = () => {
 
   const handleFilter = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
   const filteredStudents = students.filter(
@@ -181,6 +198,16 @@ const connectWebSocket = () => {
       s.class.toLowerCase().includes(filters.class.toLowerCase()) &&
       s.gvcn.toLowerCase().includes(filters.gvcn.toLowerCase())
   );
+
+  // Pagination logic
+  const indexOfLastStudent = currentPage * studentsPerPage;
+  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
+  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
+  const totalPages = Math.ceil(filteredStudents.length / studentsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
 
   const handleReply = async (studentId) => {
     try {
@@ -192,11 +219,16 @@ const connectWebSocket = () => {
         await markRead(session.id, token);
       }
 
-      setStudents((prev) =>
-        prev.map((s) =>
+      setStudents((prev) => {
+        const updatedStudents = prev.map((s) =>
           s.id === studentId ? { ...s, unread: 'Đã đọc' } : s
-        )
-      );
+        );
+        // Re-sort students after marking as read
+        return updatedStudents.sort((a, b) => {
+          const priority = { 'Chưa đọc': 1, 'Đã đọc': 2, 'Chưa nhắn': 3 };
+          return priority[a.unread] - priority[b.unread];
+        });
+      });
 
       setView('chat');
       navigate(`/teacher/chat/${studentId}`);
@@ -210,6 +242,21 @@ const connectWebSocket = () => {
     }
   };
 
+  const handleModalConfirm = () => {
+    if (modalStudentId) {
+      handleReply(modalStudentId);
+    }
+    setShowModal(false);
+    setModalStudentId(null);
+    setModalMessage('');
+  };
+
+  const handleModalCancel = () => {
+    setShowModal(false);
+    setModalStudentId(null);
+    setModalMessage('');
+  };
+
   if (view === 'chat') {
     return (
       <Chat
@@ -220,13 +267,19 @@ const connectWebSocket = () => {
         currentSession={currentSession}
         setCurrentSession={setCurrentSession}
         aiEnabled={aiEnabled}
-        sidebarCollapsed={sidebarCollapsed} // Truyền sidebarCollapsed
+        sidebarCollapsed={sidebarCollapsed}
       />
     );
   }
 
   return (
     <div className={`teacher-dashboard ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      <ConfirmModal
+        show={showModal}
+        message={modalMessage}
+        onConfirm={handleModalConfirm}
+        onCancel={handleModalCancel}
+      />
       <div className="dashboard-header">
         <h1>📚 Chatbot Cô Hương - Chế độ Giáo viên</h1>
         <div className="header-actions">
@@ -270,7 +323,7 @@ const connectWebSocket = () => {
         <table className="student-table">
           <thead>
             <tr>
-              <th>ID</th>
+              <th>STT</th>
               <th>Tên</th>
               <th>Lớp</th>
               <th>GVCN</th>
@@ -280,9 +333,9 @@ const connectWebSocket = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredStudents.map((s) => (
+            {currentStudents.map((s, index) => (
               <tr key={s.id}>
-                <td>{s.id}</td>
+                <td>{indexOfFirstStudent + index + 1}</td>
                 <td>{s.name}</td>
                 <td>{s.class}</td>
                 <td>{s.gvcn}</td>
@@ -309,6 +362,31 @@ const connectWebSocket = () => {
             ))}
           </tbody>
         </table>
+        <div className="pagination">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="pagination-btn"
+          >
+            Trước
+          </button>
+          {Array.from({ length: totalPages }, (_, index) => (
+            <button
+              key={index + 1}
+              onClick={() => handlePageChange(index + 1)}
+              className={`pagination-btn ${currentPage === index + 1 ? 'active' : ''}`}
+            >
+              {index + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="pagination-btn"
+          >
+            Sau
+          </button>
+        </div>
       </div>
     </div>
   );

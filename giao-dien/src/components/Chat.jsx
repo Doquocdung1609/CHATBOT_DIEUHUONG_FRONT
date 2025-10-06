@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getConversations, addMessage, sendToAI, getStudent } from '../services/api';
+import ConfirmModal from './ConfirmModal';
 import '../styles/chat.css';
 import { marked } from 'marked';
+import { FiMenu } from 'react-icons/fi';
 
 const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSession, aiEnabled, sidebarCollapsed, setCollapsedGlobal }) => {
   const [messages, setMessages] = useState([]);
@@ -10,12 +12,16 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
   const [isLoading, setIsLoading] = useState(false);
   const [isAiResponding, setIsAiResponding] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [selectedLink, setSelectedLink] = useState('');
   const ws = useRef(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const navigate = useNavigate();
   const sessionRef = useRef(currentSession);
   const messagesEndRef = useRef(null);
+  const chatWindowRef = useRef(null);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -43,11 +49,10 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
   }, [userId, token, mode, navigate, studentId]);
 
   const toggleSidebar = () => {
-  if (setCollapsedGlobal) {
-    setCollapsedGlobal(!sidebarCollapsed);
-  }
+    if (setCollapsedGlobal) {
+      setCollapsedGlobal(!sidebarCollapsed);
+    }
   };
-
 
   const connectWebSocket = () => {
     if (!currentSession || !token) {
@@ -58,7 +63,6 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
       console.log(`WebSocket already open for session_id: ${currentSession}`);
       return;
     }
-    // Use wss:// for production, fallback to ws:// for local development
     const wsUrl = import.meta.env.VITE_API_URL
       ? `${import.meta.env.VITE_API_URL.replace(/https?:\/\//, 'wss://').replace(/\/+$/, '')}/ws/${currentSession}/${token}`
       : `ws://localhost:8000/ws/${currentSession}/${token}`;
@@ -165,6 +169,28 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
     }
   }, [currentSession, token, mode, studentId, navigate]);
 
+  // Handle link clicks
+  useEffect(() => {
+    const chatWindow = chatWindowRef.current;
+    if (!chatWindow) return;
+
+    const handleLinkClick = (e) => {
+      if (e.target.tagName === 'A') {
+        e.preventDefault();
+        const href = e.target.getAttribute('href');
+        if (href) {
+          setSelectedLink(href);
+          setShowLinkModal(true);
+        }
+      }
+    };
+
+    chatWindow.addEventListener('click', handleLinkClick);
+    return () => {
+      chatWindow.removeEventListener('click', handleLinkClick);
+    };
+  }, []);
+
   marked.setOptions({
     breaks: true,
     gfm: true,
@@ -191,7 +217,6 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
 
     try {
       setIsAiResponding(true);
-      // Only send to /conversations, backend handles WebSocket broadcasting
       await addMessage(message, token);
       if (mode === 'Học sinh') {
         setMessages((prev) => {
@@ -212,7 +237,7 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
           session_id: currentSession,
           ai_enabled: true,
         };
-        console.log('Sending aiRequest to /chatbot:', JSON.stringify(aiRequest, null, 2)); // Log request body
+        console.log('Sending aiRequest to /chatbot:', JSON.stringify(aiRequest, null, 2));
         const response = await sendToAI(aiRequest, token);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const reader = response.body.getReader();
@@ -284,6 +309,19 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
     }
   };
 
+  const handleLinkConfirm = () => {
+    if (selectedLink) {
+      window.open(selectedLink, '_blank', 'noopener,noreferrer');
+    }
+    setShowLinkModal(false);
+    setSelectedLink('');
+  };
+
+  const handleLinkCancel = () => {
+    setShowLinkModal(false);
+    setSelectedLink('');
+  };
+
   return (
     <div className="main">
       <div className={`chat-container ${sidebarCollapsed ? 'collapsed' : ''}`}>
@@ -292,13 +330,13 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
             className="mobile-toggle-btn"
             onClick={toggleSidebar}
           >
-            ☰
+            <FiMenu size={24} />
           </button>
           {userInfo && (
             <span className="greeting">
               {mode === 'Học sinh'
                 ? `Chào em ${userInfo.name} lớp ${userInfo.class}`
-                : ``}
+                : `Chat với ${userInfo.name} lớp ${userInfo.class}`}
             </span>
           )}
           {mode === 'Giáo viên' && (
@@ -320,7 +358,7 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
             </button>
           )}
         </div>
-        <div className="chat-window">
+        <div className="chat-window" ref={chatWindowRef}>
           {isLoading ? (
             <div className="text-center text-gray-500">Đang tải tin nhắn...</div>
           ) : !currentSession ? (
@@ -399,6 +437,12 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
             Refresh
           </button>
         </div>
+        <ConfirmModal
+          show={showLinkModal}
+          message={`Bạn có muốn mở liên kết "${selectedLink}" trong tab mới không?`}
+          onConfirm={handleLinkConfirm}
+          onCancel={handleLinkCancel}
+        />
       </div>
     </div>
   );
