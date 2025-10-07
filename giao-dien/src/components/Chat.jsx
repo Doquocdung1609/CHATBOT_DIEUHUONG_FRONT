@@ -11,6 +11,7 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isAiResponding, setIsAiResponding] = useState(false);
+  const [isSending, setIsSending] = useState(false); // Mới: Trạng thái chống gửi lặp
   const [userInfo, setUserInfo] = useState(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [selectedLink, setSelectedLink] = useState('');
@@ -198,38 +199,38 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
   });
 
   const handleSend = async () => {
-    if (!input || !currentSession || !token) {
+    if (!input.trim() || isSending || !currentSession || !token) {
       if (!currentSession) {
         alert('Vui lòng chọn hoặc tạo một phiên chat mới.');
-      } else {
-        alert('Không thể kết nối với server. Vui lòng thử lại.');
       }
       return;
     }
+    setIsSending(true);
     const timestamp = new Date().toISOString();
+    const messageContent = input.trim();
+    setInput(''); // Clear input ngay để chống gửi lặp nếu nhấn nhanh
     const message = {
       session_id: currentSession,
       role: mode === 'Học sinh' ? 'user' : 'teacher',
-      content: input,
+      content: messageContent,
       timestamp,
     };
-    const aiMessage = { role: message.role, content: input, timestamp };
+    const userMessageWithRender = { ...message, rendered: marked.parse(messageContent) };
+
+    let newMessages = messages;
+    if (mode === 'Học sinh') {
+      newMessages = [...messages, userMessageWithRender];
+      setMessages(newMessages); // Thêm tin nhắn học sinh vào UI ngay lập tức
+    }
+
+    setIsAiResponding(true); // Placeholder AI hiển thị sau tin nhắn học sinh
 
     try {
-      setIsAiResponding(true);
-      await addMessage(message, token);
-      if (mode === 'Học sinh') {
-        setMessages((prev) => {
-          if (prev.some(msg => msg.timestamp === message.timestamp && msg.content === message.content)) {
-            return prev;
-          }
-          return [...prev, { ...message, rendered: marked.parse(message.content) }];
-        });
-      }
+      await addMessage(message, token); // Gửi lên server (không ảnh hưởng UI nữa)
 
       if (mode === 'Học sinh' && aiEnabled) {
         const aiRequest = {
-          messages: [...messages, aiMessage].map(msg => ({
+          messages: newMessages.map(msg => ({
             role: msg.role || 'user',
             content: msg.content || '',
             timestamp: msg.timestamp || new Date().toISOString(),
@@ -291,7 +292,6 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
           }
         }, 300);
       }
-      setInput('');
     } catch (err) {
       console.error('Send message error:', err.message, err.response?.status, err.response?.data);
       setMessages((prev) => [
@@ -306,6 +306,7 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
       ]);
     } finally {
       setIsAiResponding(false);
+      setIsSending(false);
     }
   };
 
@@ -403,10 +404,15 @@ const Chat = ({ mode, userId, studentId, token, currentSession, setCurrentSessio
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={mode === 'Học sinh' ? 'Nhập câu hỏi...' : 'Nhập tin nhắn...'}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            disabled={!currentSession}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !isSending) {
+                e.preventDefault(); // Mới: Ngăn hành vi default của Enter
+                handleSend();
+              }
+            }}
+            disabled={isSending || !currentSession} // Mới: Disable khi đang gửi
           />
-          <button className="send" onClick={handleSend} disabled={isAiResponding || !currentSession}>
+          <button className="send" onClick={handleSend} disabled={isSending || isAiResponding || !currentSession}>
             Gửi
           </button>
           <button
